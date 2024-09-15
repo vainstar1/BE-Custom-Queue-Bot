@@ -36,8 +36,9 @@ class Start(commands.Cog):
         if message:
             server_settings[server_id]['start_message'] = message
         else:
+            # Create default message template with role ping
             role_ping = f"<@&{server_settings[server_id].get('role_id', '')}>" if 'role_id' in server_settings[server_id] else ""
-            server_settings[server_id]['start_message'] = f"{role_ping} {{user_mention}} Started a custom queue with code: {{code}}. Type /join to be put on the list."
+            server_settings[server_id]['start_message'] = f"{{user_mention}} Started a custom queue with code: {{code}}. Type /join to be put on the list."
 
         save_settings(server_settings)
         embed = discord.Embed(title="Setup Completed", description="Setup completed successfully.", color=discord.Color.green())
@@ -77,19 +78,13 @@ class Start(commands.Cog):
         if message:
             server_settings[server_id]['start_message'] = message
 
-        if 'role_id' not in server_settings[server_id]:
-            role_ping = ""
+        # Ensure the message template is updated correctly
+        role_ping = f"<@&{server_settings[server_id].get('role_id', '')}>" if 'role_id' in server_settings[server_id] else ""
+        start_message_template = server_settings[server_id].get('start_message', '{user_mention} Started a custom queue with code: {code}. Type /join to be put on the list.')
+        if role_ping:
+            server_settings[server_id]['start_message'] = start_message_template
         else:
-            role_ping = f"<@&{server_settings[server_id].get('role_id', '')}>"
-
-        if 'start_message' not in server_settings[server_id]:
-            server_settings[server_id]['start_message'] = f"{role_ping} {{user_mention}} Started a custom queue with code: {{code}}. Type /join to be put on the list."
-        else:
-            start_message_template = server_settings[server_id]['start_message']
-            if role_ping:
-                server_settings[server_id]['start_message'] = start_message_template
-            else:
-                server_settings[server_id]['start_message'] = start_message_template.replace(f"{role_ping} ", "")
+            server_settings[server_id]['start_message'] = start_message_template.replace(f"{role_ping} ", "")
 
         save_settings(server_settings)
         embed = discord.Embed(title="Setup Updated", description="Setup updated successfully.", color=discord.Color.green())
@@ -135,7 +130,7 @@ class Start(commands.Cog):
 
         nickname = interaction.user.nick
         username = interaction.user.name
-        
+    
         if nickname:
             username = nickname
 
@@ -143,24 +138,26 @@ class Start(commands.Cog):
             shared_state.players_list.append(username)
 
         if shared_state.customs_started:
-            embed = discord.Embed(title="Customs Active", description="A custom queue is already active.", color=discord.Color.red())
-            return await interaction.response.send_message(embed=embed)
+            channel = interaction.guild.get_channel(channel_id)
+            if channel is not None:
+                await channel.send(embed=discord.Embed(title="Customs Active", description="A custom queue is already active.", color=discord.Color.red()))
+            return
 
         shared_state.customs_started = True
         shared_state.current_code = code
-        
+    
         role_ping = f"<@&{role_id}>" if role_id else ""
         start_message = start_message_template.format(user_mention=interaction.user.mention, code=code)
-        start_message = f"{role_ping} {start_message}"
+        start_message = f"{role_ping} {start_message}".strip() 
 
         channel = interaction.guild.get_channel(channel_id)
         if channel is not None:
-            embed = discord.Embed(title="Customs Initiated", description="You have initiated customs. Sending ping in the setup channel.", color=discord.Color.green())
-            await interaction.response.send_message(embed=embed)
-            await channel.send(start_message)
-        else:
-            embed = discord.Embed(title="Channel Not Found", description="Failed to find the specified channel.", color=discord.Color.red())
-            await interaction.response.send_message(embed=embed)
+            await channel.send(start_message)  
+
+        await interaction.response.send_message(
+            embed=discord.Embed(title="Customs Initiated", description="Customs have been started.", color=discord.Color.green()),
+            ephemeral=True
+        )
 
 async def setup(client: commands.Bot) -> None:
     await client.add_cog(Start(client))
