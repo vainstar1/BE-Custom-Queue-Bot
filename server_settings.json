@@ -5,8 +5,8 @@
         "start_message": "Customs started! Type /join to be put on the list."
     },
     "1057765501121601630": {
-        "channel_id": 1191249069209829378,
-        "role_id": 1191496149392162959,
+        "channel_id": 1099419224914542693,
+        "role_id": 1198429813103403148,
         "start_message": "{user_mention} Started a custom queue with code: {code}. Type /join to be put on the list."
     }
 }
