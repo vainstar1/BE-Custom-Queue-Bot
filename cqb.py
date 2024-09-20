@@ -1,37 +1,34 @@
 import pathlib
 import discord
 from discord.ext import commands, tasks
-from discord import app_commands
 from dotenv import load_dotenv
 import os
 import random
 import pytz
 import datetime
-import requests
-from PIL import Image, ImageDraw, ImageFont
-import io
-from colorama import Back, Fore, Style
 import time
 import platform
+import csv
 
 load_dotenv()
 
 TOKEN = os.getenv('TOKEN')
 CQBTOKEN = os.getenv('CQBTOKEN')
-TWITCH_CLIENT_ID = os.getenv('TWITCH_CLIENT_ID')
-TWITCH_OAUTH_TOKEN = os.getenv('TWITCH_OAUTH_TOKEN')
-TWITCH_REFRESH_TOKEN = os.getenv('TWITCH_REFRESH_TOKEN')
-TWITCH_CLIENT_SECRET = os.getenv('TWITCH_CLIENT_SECRET')
-MESSAGE_ID = os.getenv('MESSAGE_ID')
-ROLE_ID = os.getenv('ROLE_ID')
-ROLE_ID2 = os.getenv('ROLE_ID2')
+
+cooldown_time = 1800  # Cooldown of 30 minutes
+last_used = 0
+
+def load_phrases_from_csv():
+    with open('phrases.csv', newline='', encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile)
+        return [row[0] for row in reader if len(row) > 0 and row[0].strip()]
+
+trigger_phrases = load_phrases_from_csv()
 
 class Client(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix=commands.when_mentioned_or('.'), intents=discord.Intents().all())
-        
         self.token_expiry = datetime.datetime.utcnow()
-
         self.cogslist = [
             "cogs.add",
             "cogs.changecode",
@@ -49,7 +46,8 @@ class Client(commands.Bot):
             "cogs.streams",
             "cogs.teststart",
             "cogs.trollcog",
-            "cogs.playermanager"
+            "cogs.playermanager",
+            "cogs.viewphrases"
         ]
 
     async def setup_hook(self):
@@ -66,50 +64,23 @@ class Client(commands.Bot):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        global last_used
+        current_time = time.time()
+
         if message.author == self.user:
             return
 
-        if message.content.startswith('!'):
-            await self.process_commands(message)
-            return
+        if any(phrase in message.content.lower() for phrase in trigger_phrases):
+            if current_time - last_used >= cooldown_time:
+                last_used = current_time
+                matched_phrase = next((p for p in trigger_phrases if p in message.content.lower()), None)
+                if matched_phrase:
+                    await message.reply(f'"{matched_phrase}" 🤓')
+            else:
+                remaining_time = int(cooldown_time - (current_time - last_used))
+                print(f"on cooldown for {remaining_time} seconds")
 
         await self.process_commands(message)
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, payload):
-        if payload.message_id == int(MESSAGE_ID) and str(payload.emoji) == '👍':
-            guild = self.get_guild(payload.guild_id)
-            member = guild.get_member(payload.user_id)
-            role = guild.get_role(ROLE_ID)
-
-            if member is not None and role is not None:
-                await member.add_roles(role)
-
-        if payload.message_id == int(MESSAGE_ID) and str(payload.emoji) == '✅':
-            guild = self.get_guild(payload.guild_id)
-            member = guild.get_member(payload.user_id)
-            role = guild.get_role(ROLE_ID2)
-
-            if member is not None and role is not None:
-                await member.add_roles(role)
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, payload):
-        if payload.message_id == int(MESSAGE_ID) and str(payload.emoji) == '👍':
-            guild = self.get_guild(payload.guild_id)
-            member = guild.get_member(payload.user_id)
-            role = guild.get_role(ROLE_ID)
-
-            if member is not None and role is not None:
-                await member.remove_roles(role)
-
-        if payload.message_id == int(MESSAGE_ID) and str(payload.emoji) == '✅':
-            guild = self.get_guild(payload.guild_id)
-            member = guild.get_member(payload.user_id)
-            role = guild.get_role(ROLE_ID2)
-
-            if member is not None and role is not None:
-                await member.remove_roles(role)
 
     @tasks.loop(seconds=60)
     async def status_task(self):
