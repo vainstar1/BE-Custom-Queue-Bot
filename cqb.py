@@ -47,7 +47,8 @@ class Client(commands.Bot):
             "cogs.teststart",
             "cogs.trollcog",
             "cogs.playermanager",
-            "cogs.viewphrases"
+            "cogs.viewphrases",
+            "cogs.addphrase"
         ]
 
     async def setup_hook(self):
