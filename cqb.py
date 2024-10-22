@@ -1,6 +1,7 @@
 import pathlib
 import discord
 from discord.ext import commands, tasks
+from discord import app_commands
 from dotenv import load_dotenv
 import os
 import random
@@ -48,7 +49,9 @@ class Client(commands.Bot):
             "cogs.trollcog",
             "cogs.playermanager",
             "cogs.viewphrases",
-            "cogs.addphrase"
+            "cogs.addphrase",
+            "cogs.sync",
+            "cogs.vfxtwitter"
         ]
 
     async def setup_hook(self):
@@ -61,7 +64,7 @@ class Client(commands.Bot):
         print(f"Discord Version: {discord.__version__}")
         print(f"Python Version: {platform.python_version()}")
         self.status_task.start()
-        synced = await self.tree.sync()
+        await self.tree.sync() 
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -85,6 +88,7 @@ class Client(commands.Bot):
 
     @tasks.loop(seconds=60)
     async def status_task(self):
+
         phrases = ["HITSTUN THE GIZMO", "press Y to heal on zerocool", "move your camera to see your team"]
         new_status = random.choice(phrases)
         await self.change_presence(activity=discord.Game(name=new_status))

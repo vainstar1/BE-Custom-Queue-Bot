@@ -1,0 +1,5 @@
+# This directory is a Syncthing folder marker.
+# Do not delete.
+
+folderID: bot-code-sync
+created: 2024-10-14T01:07:26-04:00
